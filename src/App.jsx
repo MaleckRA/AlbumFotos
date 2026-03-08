@@ -284,6 +284,9 @@ function Album({ mascota, alVolver }) {
     })
     e.target.value = ''
   }
+function eliminarFoto(idx) {
+    setFotos(prev => prev.filter((_, i) => i !== idx))
+  }
 
   const heroFoto = fotos[0] || null
 
@@ -308,21 +311,26 @@ function Album({ mascota, alVolver }) {
         : <div style={s.heroPlaceholder}>🐾</div>
       }
 
-      {fotos.length > 0 && (
+        {fotos.length > 0 && (
         <div style={s.gridSection}>
           <div style={s.sectionLabel}>Momentos</div>
           <div style={s.grid}>
             {fotos.map((foto, i) => (
-              <div key={i} style={s.gridItem} onClick={() => setLightbox(foto)}>
-                <img src={foto.src} alt={foto.caption} style={s.gridImg} />
-              </div>
+              <FotoItem
+                key={i}
+                foto={foto}
+                onClic={() => setLightbox(foto)}
+                onEliminar={() => eliminarFoto(i)}
+              />
             ))}
           </div>
         </div>
       )}
 
-      <div style={s.uploadZone}
-        onClick={() => document.getElementById(`upload-${mascota.id}`).click()}>
+      <div
+        style={s.uploadZone}
+        onClick={() => document.getElementById(`upload-${mascota.id}`).click()}
+      >
         <input
           id={`upload-${mascota.id}`}
           type="file" multiple accept="image/*"
@@ -345,6 +353,46 @@ function Album({ mascota, alVolver }) {
     </div>
   )
 }
+function FotoItem({ foto, onClic, onEliminar }) {
+  const [hover, setHover] = useState(false)
+  return (
+    <div
+      style={s.gridItem}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+    >
+      <img
+        src={foto.src}
+        alt={foto.caption}
+        style={{
+          ...s.gridImg,
+          transform: hover ? 'scale(1.05)' : 'scale(1)',
+        }}
+        onClick={onClic}
+      />
+      <button
+        onClick={onEliminar}
+        style={{
+          position: 'absolute',
+          top: '0.5rem', right: '0.5rem',
+          background: 'rgba(26,26,24,0.75)',
+          border: '1px solid rgba(255,255,255,0.15)',
+          color: 'rgba(255,255,255,0.7)',
+          fontSize: '0.58rem',
+          letterSpacing: '0.15em',
+          textTransform: 'uppercase',
+          padding: '0.3rem 0.7rem',
+          cursor: 'pointer',
+          opacity: hover ? 1 : 0,
+          transition: 'opacity 0.2s',
+        }}
+      >
+        Eliminar
+      </button>
+    </div>
+  )
+}
+
 
 function App() {
   const [mascotaActiva, setMascotaActiva] = useState(null)
