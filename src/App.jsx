@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { CLOUDINARY_CLOUD, CLOUDINARY_PRESET, supabase } from './supabase'
 
 const mascotas = [
   { id: 'yako',   nombre: 'Yako',   fotoPortada: '/yako.jpg',   raza: 'El Abuelete' },
@@ -227,6 +228,30 @@ const s = {
     color: 'rgba(255,255,255,0.35)',
     textTransform: 'uppercase',
   },
+  spinner: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: '200px',
+    fontSize: '0.65rem',
+    letterSpacing: '0.25em',
+    color: '#8a8680',
+    textTransform: 'uppercase',
+  },
+}
+
+// ── Sube imagen a Cloudinary y devuelve la URL
+async function subirACloudinary(archivo) {
+  const formData = new FormData()
+  formData.append('file', archivo)
+  formData.append('upload_preset', CLOUDINARY_PRESET)
+
+  const res = await fetch(
+    `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD}/image/upload`,
+    { method: 'POST', body: formData }
+  )
+  const data = await res.json()
+  return data.secure_url
 }
 
 function TarjetaMascota({ mascota, alHacerClic, cantidadFotos }) {
@@ -261,7 +286,9 @@ function TarjetaMascota({ mascota, alHacerClic, cantidadFotos }) {
           opacity: hover ? 1 : 0,
           transform: hover ? 'translateY(0)' : 'translateY(8px)',
         }}>
-          {cantidadFotos > 0 ? `${cantidadFotos} foto${cantidadFotos > 1 ? 's' : ''} · Ver álbum →` : 'Ver álbum →'}
+          {cantidadFotos > 0
+            ? `${cantidadFotos} foto${cantidadFotos > 1 ? 's' : ''} · Ver álbum →`
+            : 'Ver álbum →'}
         </div>
       </div>
     </div>
@@ -277,7 +304,7 @@ function FotoItem({ foto, onClic, onEliminar }) {
       onMouseLeave={() => setHover(false)}
     >
       <img
-        src={foto.src}
+        src={foto.url}
         alt={foto.caption}
         style={{
           ...s.gridImg,
@@ -308,22 +335,54 @@ function FotoItem({ foto, onClic, onEliminar }) {
   )
 }
 
-function Album({ mascota, fotos, onAgregarFotos, onEliminarFoto, alVolver }) {
+function Album({ mascota, alVolver }) {
+  const [fotos, setFotos] = useState([])
   const [lightbox, setLightbox] = useState(null)
-  const heroFoto = fotos[0] || null
+  const [cargando, setCargando] = useState(true)
+  const [subiendo, setSubiendo] = useState(false)
 
-  function agregarFotos(e) {
+  // Cargar fotos de Supabase al entrar
+  useEffect(() => {
+    cargarFotos()
+  }, [mascota.id])
+
+  async function cargarFotos() {
+    setCargando(true)
+    const { data } = await supabase
+      .from('fotos')
+      .select('*')
+      .eq('mascota_id', mascota.id)
+      .order('created_at', { ascending: true })
+    setFotos(data || [])
+    setCargando(false)
+  }
+
+  async function agregarFotos(e) {
     const archivos = Array.from(e.target.files)
-    archivos.forEach(archivo => {
-      const reader = new FileReader()
-      reader.onload = ev => {
-        const caption = prompt('Descripción para esta foto (opcional):') || ''
-        onAgregarFotos(mascota.id, { src: ev.target.result, caption })
-      }
-      reader.readAsDataURL(archivo)
-    })
+    setSubiendo(true)
+
+    for (const archivo of archivos) {
+      const caption = prompt('Descripción para esta foto (opcional):') || ''
+      const url = await subirACloudinary(archivo)
+
+      await supabase.from('fotos').insert({
+        mascota_id: mascota.id,
+        url,
+        caption,
+      })
+    }
+
+    await cargarFotos()
+    setSubiendo(false)
     e.target.value = ''
   }
+
+  async function eliminarFoto(foto) {
+    await supabase.from('fotos').delete().eq('id', foto.id)
+    setFotos(prev => prev.filter(f => f.id !== foto.id))
+  }
+
+  const heroFoto = fotos[0] || null
 
   return (
     <div style={s.albumWrap}>
@@ -333,7 +392,8 @@ function Album({ mascota, fotos, onAgregarFotos, onEliminarFoto, alVolver }) {
           <div style={s.albumName}>{mascota.nombre}</div>
           <div style={{ fontSize: '0.6rem', letterSpacing: '0.2em',
             color: '#8a8680', textTransform: 'uppercase', marginTop: '0.15rem' }}>
-            {fotos.length === 0 ? 'sin fotos aún'
+            {cargando ? 'cargando...'
+              : fotos.length === 0 ? 'sin fotos aún'
               : fotos.length === 1 ? '1 foto'
               : `${fotos.length} fotos`}
           </div>
@@ -342,28 +402,34 @@ function Album({ mascota, fotos, onAgregarFotos, onEliminarFoto, alVolver }) {
       </header>
 
       {heroFoto
-        ? <img src={heroFoto.src} alt="" style={s.heroImg} />
+        ? <img src={heroFoto.url} alt="" style={s.heroImg} />
         : <div style={s.heroPlaceholder}>🐾</div>
       }
 
-      {fotos.length > 0 && (
+      {cargando ? (
+        <div style={s.spinner}>Cargando fotos...</div>
+      ) : fotos.length > 0 ? (
         <div style={s.gridSection}>
           <div style={s.sectionLabel}>Momentos</div>
           <div style={s.grid}>
-            {fotos.map((foto, i) => (
+            {fotos.map(foto => (
               <FotoItem
-                key={i}
+                key={foto.id}
                 foto={foto}
                 onClic={() => setLightbox(foto)}
-                onEliminar={() => onEliminarFoto(mascota.id, i)}
+                onEliminar={() => eliminarFoto(foto)}
               />
             ))}
           </div>
         </div>
-      )}
+      ) : null}
 
       <div
-        style={s.uploadZone}
+        style={{
+          ...s.uploadZone,
+          opacity: subiendo ? 0.5 : 1,
+          pointerEvents: subiendo ? 'none' : 'auto',
+        }}
         onClick={() => document.getElementById(`upload-${mascota.id}`).click()}
       >
         <input
@@ -373,13 +439,15 @@ function Album({ mascota, fotos, onAgregarFotos, onEliminarFoto, alVolver }) {
           onChange={agregarFotos}
         />
         <div style={{ fontSize: '1.5rem', opacity: 0.3, marginBottom: '0.8rem' }}>＋</div>
-        <div style={s.uploadText}>Agregar fotos</div>
+        <div style={s.uploadText}>
+          {subiendo ? 'Subiendo fotos...' : 'Agregar fotos'}
+        </div>
       </div>
 
       {lightbox && (
         <div style={s.lightbox} onClick={() => setLightbox(null)}>
           <button style={s.lightboxClose}>Cerrar</button>
-          <img src={lightbox.src} alt={lightbox.caption} style={s.lightboxImg} />
+          <img src={lightbox.url} alt={lightbox.caption} style={s.lightboxImg} />
           {lightbox.caption && (
             <div style={s.lightboxCaption}>{lightbox.caption}</div>
           )}
@@ -389,49 +457,35 @@ function Album({ mascota, fotos, onAgregarFotos, onEliminarFoto, alVolver }) {
   )
 }
 
-// ── App principal — aquí vive el estado de todas las fotos
 function App() {
   const [mascotaActiva, setMascotaActiva] = useState(null)
+  const [conteos, setConteos] = useState({ yako: 0, baldur: 0 })
 
-  // Las fotos de ambas mascotas viven aquí arriba, nunca se pierden
-  const [todasLasFotos, setTodasLasFotos] = useState({
-    yako: [],
-    baldur: [],
-  })
-
-  function agregarFoto(id, foto) {
-    setTodasLasFotos(prev => ({
-      ...prev,
-      [id]: [...prev[id], foto],
-    }))
-  }
-
-  function eliminarFoto(id, idx) {
-    setTodasLasFotos(prev => ({
-      ...prev,
-      [id]: prev[id].filter((_, i) => i !== idx),
-    }))
-  }
+  // Contar fotos de cada mascota para mostrar en portada
+  useEffect(() => {
+    async function contarFotos() {
+      for (const m of mascotas) {
+        const { count } = await supabase
+          .from('fotos')
+          .select('*', { count: 'exact', head: true })
+          .eq('mascota_id', m.id)
+        setConteos(prev => ({ ...prev, [m.id]: count || 0 }))
+      }
+    }
+    contarFotos()
+  }, [])
 
   const mascota = mascotas.find(m => m.id === mascotaActiva)
 
   if (mascotaActiva) {
-    return (
-      <Album
-        mascota={mascota}
-        fotos={todasLasFotos[mascotaActiva]}
-        onAgregarFotos={agregarFoto}
-        onEliminarFoto={eliminarFoto}
-        alVolver={() => setMascotaActiva(null)}
-      />
-    )
+    return <Album mascota={mascota} alVolver={() => setMascotaActiva(null)} />
   }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
       <header style={s.header}>
         <span style={s.logo}>Los Petetes</span>
-        <span style={s.headerRight}>Álbum de Foto</span>
+        <span style={s.headerRight}>Álbum de Fotos</span>
       </header>
       <main style={s.main}>
         {mascotas.map(m => (
@@ -439,7 +493,7 @@ function App() {
             key={m.id}
             mascota={m}
             alHacerClic={setMascotaActiva}
-            cantidadFotos={todasLasFotos[m.id].length}
+            cantidadFotos={conteos[m.id]}
           />
         ))}
       </main>
