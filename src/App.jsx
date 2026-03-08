@@ -70,6 +70,14 @@ const s = {
     lineHeight: 1,
     letterSpacing: '0.02em',
   },
+  petBreed: {
+    fontSize: '0.65rem',
+    fontWeight: 300,
+    letterSpacing: '0.3em',
+    color: '#d4b87a',
+    textTransform: 'uppercase',
+    marginTop: '0.5rem',
+  },
   petBtn: {
     display: 'inline-block',
     marginTop: '1rem',
@@ -219,17 +227,9 @@ const s = {
     color: 'rgba(255,255,255,0.35)',
     textTransform: 'uppercase',
   },
-  petBreed: {
-  fontSize: '0.65rem',
-  fontWeight: 300,
-  letterSpacing: '0.3em',
-  color: '#d4b87a',
-  textTransform: 'uppercase',
-  marginTop: '0.5rem',
-},
 }
 
-function TarjetaMascota({ mascota, alHacerClic }) {
+function TarjetaMascota({ mascota, alHacerClic, cantidadFotos }) {
   const [hover, setHover] = useState(false)
   return (
     <div
@@ -261,98 +261,13 @@ function TarjetaMascota({ mascota, alHacerClic }) {
           opacity: hover ? 1 : 0,
           transform: hover ? 'translateY(0)' : 'translateY(8px)',
         }}>
-          Ver álbum →
+          {cantidadFotos > 0 ? `${cantidadFotos} foto${cantidadFotos > 1 ? 's' : ''} · Ver álbum →` : 'Ver álbum →'}
         </div>
       </div>
     </div>
   )
 }
 
-function Album({ mascota, alVolver }) {
-  const [fotos, setFotos] = useState([])
-  const [lightbox, setLightbox] = useState(null)
-
-  function agregarFotos(e) {
-    const archivos = Array.from(e.target.files)
-    archivos.forEach(archivo => {
-      const reader = new FileReader()
-      reader.onload = ev => {
-        const caption = prompt('Descripción para esta foto (opcional):') || ''
-        setFotos(prev => [...prev, { src: ev.target.result, caption }])
-      }
-      reader.readAsDataURL(archivo)
-    })
-    e.target.value = ''
-  }
-function eliminarFoto(idx) {
-    setFotos(prev => prev.filter((_, i) => i !== idx))
-  }
-
-  const heroFoto = fotos[0] || null
-
-  return (
-    <div style={s.albumWrap}>
-      <header style={s.albumHeader}>
-        <button style={s.backBtn} onClick={alVolver}>← Volver</button>
-        <div style={{ textAlign: 'center' }}>
-          <div style={s.albumName}>{mascota.nombre}</div>
-          <div style={{ fontSize: '0.6rem', letterSpacing: '0.2em',
-            color: '#8a8680', textTransform: 'uppercase', marginTop: '0.15rem' }}>
-            {fotos.length === 0 ? 'sin fotos aún'
-              : fotos.length === 1 ? '1 foto'
-              : `${fotos.length} fotos`}
-          </div>
-        </div>
-        <div style={{ width: '80px' }} />
-      </header>
-
-      {heroFoto
-        ? <img src={heroFoto.src} alt="" style={s.heroImg} />
-        : <div style={s.heroPlaceholder}>🐾</div>
-      }
-
-        {fotos.length > 0 && (
-        <div style={s.gridSection}>
-          <div style={s.sectionLabel}>Momentos</div>
-          <div style={s.grid}>
-            {fotos.map((foto, i) => (
-              <FotoItem
-                key={i}
-                foto={foto}
-                onClic={() => setLightbox(foto)}
-                onEliminar={() => eliminarFoto(i)}
-              />
-            ))}
-          </div>
-        </div>
-      )}
-
-      <div
-        style={s.uploadZone}
-        onClick={() => document.getElementById(`upload-${mascota.id}`).click()}
-      >
-        <input
-          id={`upload-${mascota.id}`}
-          type="file" multiple accept="image/*"
-          style={{ display: 'none' }}
-          onChange={agregarFotos}
-        />
-        <div style={{ fontSize: '1.5rem', opacity: 0.3, marginBottom: '0.8rem' }}>＋</div>
-        <div style={s.uploadText}>Agregar fotos</div>
-      </div>
-
-      {lightbox && (
-        <div style={s.lightbox} onClick={() => setLightbox(null)}>
-          <button style={s.lightboxClose}>Cerrar</button>
-          <img src={lightbox.src} alt={lightbox.caption} style={s.lightboxImg} />
-          {lightbox.caption && (
-            <div style={s.lightboxCaption}>{lightbox.caption}</div>
-          )}
-        </div>
-      )}
-    </div>
-  )
-}
 function FotoItem({ foto, onClic, onEliminar }) {
   const [hover, setHover] = useState(false)
   return (
@@ -393,28 +308,143 @@ function FotoItem({ foto, onClic, onEliminar }) {
   )
 }
 
+function Album({ mascota, fotos, onAgregarFotos, onEliminarFoto, alVolver }) {
+  const [lightbox, setLightbox] = useState(null)
+  const heroFoto = fotos[0] || null
 
+  function agregarFotos(e) {
+    const archivos = Array.from(e.target.files)
+    archivos.forEach(archivo => {
+      const reader = new FileReader()
+      reader.onload = ev => {
+        const caption = prompt('Descripción para esta foto (opcional):') || ''
+        onAgregarFotos(mascota.id, { src: ev.target.result, caption })
+      }
+      reader.readAsDataURL(archivo)
+    })
+    e.target.value = ''
+  }
+
+  return (
+    <div style={s.albumWrap}>
+      <header style={s.albumHeader}>
+        <button style={s.backBtn} onClick={alVolver}>← Volver</button>
+        <div style={{ textAlign: 'center' }}>
+          <div style={s.albumName}>{mascota.nombre}</div>
+          <div style={{ fontSize: '0.6rem', letterSpacing: '0.2em',
+            color: '#8a8680', textTransform: 'uppercase', marginTop: '0.15rem' }}>
+            {fotos.length === 0 ? 'sin fotos aún'
+              : fotos.length === 1 ? '1 foto'
+              : `${fotos.length} fotos`}
+          </div>
+        </div>
+        <div style={{ width: '80px' }} />
+      </header>
+
+      {heroFoto
+        ? <img src={heroFoto.src} alt="" style={s.heroImg} />
+        : <div style={s.heroPlaceholder}>🐾</div>
+      }
+
+      {fotos.length > 0 && (
+        <div style={s.gridSection}>
+          <div style={s.sectionLabel}>Momentos</div>
+          <div style={s.grid}>
+            {fotos.map((foto, i) => (
+              <FotoItem
+                key={i}
+                foto={foto}
+                onClic={() => setLightbox(foto)}
+                onEliminar={() => onEliminarFoto(mascota.id, i)}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div
+        style={s.uploadZone}
+        onClick={() => document.getElementById(`upload-${mascota.id}`).click()}
+      >
+        <input
+          id={`upload-${mascota.id}`}
+          type="file" multiple accept="image/*"
+          style={{ display: 'none' }}
+          onChange={agregarFotos}
+        />
+        <div style={{ fontSize: '1.5rem', opacity: 0.3, marginBottom: '0.8rem' }}>＋</div>
+        <div style={s.uploadText}>Agregar fotos</div>
+      </div>
+
+      {lightbox && (
+        <div style={s.lightbox} onClick={() => setLightbox(null)}>
+          <button style={s.lightboxClose}>Cerrar</button>
+          <img src={lightbox.src} alt={lightbox.caption} style={s.lightboxImg} />
+          {lightbox.caption && (
+            <div style={s.lightboxCaption}>{lightbox.caption}</div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── App principal — aquí vive el estado de todas las fotos
 function App() {
   const [mascotaActiva, setMascotaActiva] = useState(null)
+
+  // Las fotos de ambas mascotas viven aquí arriba, nunca se pierden
+  const [todasLasFotos, setTodasLasFotos] = useState({
+    yako: [],
+    baldur: [],
+  })
+
+  function agregarFoto(id, foto) {
+    setTodasLasFotos(prev => ({
+      ...prev,
+      [id]: [...prev[id], foto],
+    }))
+  }
+
+  function eliminarFoto(id, idx) {
+    setTodasLasFotos(prev => ({
+      ...prev,
+      [id]: prev[id].filter((_, i) => i !== idx),
+    }))
+  }
+
   const mascota = mascotas.find(m => m.id === mascotaActiva)
 
   if (mascotaActiva) {
-    return <Album mascota={mascota} alVolver={() => setMascotaActiva(null)} />
+    return (
+      <Album
+        mascota={mascota}
+        fotos={todasLasFotos[mascotaActiva]}
+        onAgregarFotos={agregarFoto}
+        onEliminarFoto={eliminarFoto}
+        alVolver={() => setMascotaActiva(null)}
+      />
+    )
   }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
       <header style={s.header}>
         <span style={s.logo}>Los Petetes</span>
-        <span style={s.headerRight}>Álbum de Fotos</span>
+        <span style={s.headerRight}>Álbum de Foto</span>
       </header>
       <main style={s.main}>
         {mascotas.map(m => (
-          <TarjetaMascota key={m.id} mascota={m} alHacerClic={setMascotaActiva} />
+          <TarjetaMascota
+            key={m.id}
+            mascota={m}
+            alHacerClic={setMascotaActiva}
+            cantidadFotos={todasLasFotos[m.id].length}
+          />
         ))}
       </main>
       <footer style={s.footer}>
-        <span style={s.tagline}>"Los petetes más sinvergüenzas."</span>
+        <span style={s.tagline}>"Los Petetes más sinvergüenzas."</span>
       </footer>
     </div>
   )
