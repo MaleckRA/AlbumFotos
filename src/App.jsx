@@ -1,11 +1,10 @@
 import { useState } from 'react'
 
 const mascotas = [
-  { id: 'yako',   nombre: 'Yako',   raza: 'Perro', fotoPortada: null },
-  { id: 'baldur', nombre: 'Baldur', raza: 'Perro', fotoPortada: null },
+  { id: 'yako',   nombre: 'Yako',   fotoPortada: '/yako.jpg',   raza: 'El Abuelete' },
+  { id: 'baldur', nombre: 'Baldur', fotoPortada: '/baldur.jpg', raza: 'El Tonto' },
 ]
 
-// ── Estilos como objetos JS (la forma de hacer CSS inline en React)
 const s = {
   header: {
     background: '#1a1a18',
@@ -54,39 +53,31 @@ const s = {
     width: '100%',
     height: '100%',
     objectFit: 'cover',
-    filter: 'brightness(0.75) saturate(0.85)',
     transition: 'transform 0.8s ease, filter 0.5s ease',
   },
   cardInfo: {
     position: 'absolute',
     bottom: 0, left: 0, right: 0,
-    padding: '2.5rem 2.5rem 2rem',
-    background: 'linear-gradient(to top, rgba(26,26,24,0.9) 0%, transparent 100%)',
+    padding: '3rem 2.5rem 2.5rem',
+    background: 'linear-gradient(to top, rgba(26,26,24,0.92) 0%, transparent 100%)',
   },
   petName: {
     fontFamily: "'Cormorant Garamond', serif",
-    fontSize: '3.5rem',
+    fontSize: '4rem',
     fontWeight: 300,
     fontStyle: 'italic',
     color: '#fff',
     lineHeight: 1,
     letterSpacing: '0.02em',
   },
-  petBreed: {
-    fontSize: '0.62rem',
-    fontWeight: 300,
-    letterSpacing: '0.3em',
-    color: '#d4b87a',
-    textTransform: 'uppercase',
-    marginTop: '0.5rem',
-  },
   petBtn: {
     display: 'inline-block',
     marginTop: '1rem',
     fontSize: '0.62rem',
     letterSpacing: '0.25em',
-    color: 'rgba(255,255,255,0.5)',
+    color: 'rgba(255,255,255,0.45)',
     textTransform: 'uppercase',
+    transition: 'opacity 0.3s, transform 0.3s',
   },
   footer: {
     background: '#1a1a18',
@@ -104,7 +95,6 @@ const s = {
     color: 'rgba(255,255,255,0.2)',
     letterSpacing: '0.06em',
   },
-  // Album
   albumWrap: {
     minHeight: '100vh',
     background: '#faf8f4',
@@ -165,9 +155,6 @@ const s = {
     color: '#b8975a',
     textTransform: 'uppercase',
     marginBottom: '1.5rem',
-    display: 'flex',
-    alignItems: 'center',
-    gap: '1rem',
   },
   grid: {
     display: 'grid',
@@ -193,7 +180,6 @@ const s = {
     padding: '2.5rem',
     textAlign: 'center',
     cursor: 'pointer',
-    transition: 'border-color 0.3s',
   },
   uploadText: {
     fontSize: '0.65rem',
@@ -201,7 +187,6 @@ const s = {
     color: '#8a8680',
     textTransform: 'uppercase',
   },
-  // Lightbox
   lightbox: {
     position: 'fixed',
     inset: 0,
@@ -234,9 +219,16 @@ const s = {
     color: 'rgba(255,255,255,0.35)',
     textTransform: 'uppercase',
   },
+  petBreed: {
+  fontSize: '0.65rem',
+  fontWeight: 300,
+  letterSpacing: '0.3em',
+  color: '#d4b87a',
+  textTransform: 'uppercase',
+  marginTop: '0.5rem',
+},
 }
 
-// ── Componente: tarjeta de la portada
 function TarjetaMascota({ mascota, alHacerClic }) {
   const [hover, setHover] = useState(false)
   return (
@@ -250,9 +242,12 @@ function TarjetaMascota({ mascota, alHacerClic }) {
         <img
           src={mascota.fotoPortada}
           alt={mascota.nombre}
-          style={{ ...s.cardImg,
+          style={{
+            ...s.cardImg,
             transform: hover ? 'scale(1.04)' : 'scale(1)',
-            filter: hover ? 'brightness(0.9) saturate(1)' : 'brightness(0.7) saturate(0.85)',
+            filter: hover
+              ? 'brightness(0.85) saturate(1)'
+              : 'brightness(0.65) saturate(0.85)',
           }}
         />
       ) : (
@@ -261,10 +256,10 @@ function TarjetaMascota({ mascota, alHacerClic }) {
       <div style={s.cardInfo}>
         <div style={s.petName}>{mascota.nombre}</div>
         <div style={s.petBreed}>{mascota.raza}</div>
-        <div style={{ ...s.petBtn,
+        <div style={{
+          ...s.petBtn,
           opacity: hover ? 1 : 0,
           transform: hover ? 'translateY(0)' : 'translateY(8px)',
-          transition: 'opacity 0.3s, transform 0.3s',
         }}>
           Ver álbum →
         </div>
@@ -273,10 +268,9 @@ function TarjetaMascota({ mascota, alHacerClic }) {
   )
 }
 
-// ── Componente: álbum individual de una mascota
 function Album({ mascota, alVolver }) {
   const [fotos, setFotos] = useState([])
-  const [lightbox, setLightbox] = useState(null) // foto activa en lightbox
+  const [lightbox, setLightbox] = useState(null)
 
   function agregarFotos(e) {
     const archivos = Array.from(e.target.files)
@@ -295,7 +289,6 @@ function Album({ mascota, alVolver }) {
 
   return (
     <div style={s.albumWrap}>
-      {/* Header */}
       <header style={s.albumHeader}>
         <button style={s.backBtn} onClick={alVolver}>← Volver</button>
         <div style={{ textAlign: 'center' }}>
@@ -310,13 +303,11 @@ function Album({ mascota, alVolver }) {
         <div style={{ width: '80px' }} />
       </header>
 
-      {/* Hero */}
       {heroFoto
         ? <img src={heroFoto.src} alt="" style={s.heroImg} />
         : <div style={s.heroPlaceholder}>🐾</div>
       }
 
-      {/* Grid de fotos */}
       {fotos.length > 0 && (
         <div style={s.gridSection}>
           <div style={s.sectionLabel}>Momentos</div>
@@ -330,8 +321,8 @@ function Album({ mascota, alVolver }) {
         </div>
       )}
 
-      {/* Zona de subida */}
-      <div style={s.uploadZone} onClick={() => document.getElementById(`upload-${mascota.id}`).click()}>
+      <div style={s.uploadZone}
+        onClick={() => document.getElementById(`upload-${mascota.id}`).click()}>
         <input
           id={`upload-${mascota.id}`}
           type="file" multiple accept="image/*"
@@ -342,7 +333,6 @@ function Album({ mascota, alVolver }) {
         <div style={s.uploadText}>Agregar fotos</div>
       </div>
 
-      {/* Lightbox */}
       {lightbox && (
         <div style={s.lightbox} onClick={() => setLightbox(null)}>
           <button style={s.lightboxClose}>Cerrar</button>
@@ -356,7 +346,6 @@ function Album({ mascota, alVolver }) {
   )
 }
 
-// ── Componente principal
 function App() {
   const [mascotaActiva, setMascotaActiva] = useState(null)
   const mascota = mascotas.find(m => m.id === mascotaActiva)
@@ -368,8 +357,8 @@ function App() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
       <header style={s.header}>
-        <span style={s.logo}>Mis Amores</span>
-        <span style={s.headerRight}>Álbum de Mascotas</span>
+        <span style={s.logo}>Los Petetes</span>
+        <span style={s.headerRight}>Álbum de Fotos</span>
       </header>
       <main style={s.main}>
         {mascotas.map(m => (
@@ -377,7 +366,7 @@ function App() {
         ))}
       </main>
       <footer style={s.footer}>
-        <span style={s.tagline}>"Ellos son el hogar."</span>
+        <span style={s.tagline}>"Los petetes más sinvergüenzas."</span>
       </footer>
     </div>
   )
